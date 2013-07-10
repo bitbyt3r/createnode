@@ -76,11 +76,11 @@ def createRoot(container, options):
   #Clone zfs template
   #Success return true, else false
   print "Creating private dir for:", container['name'], "...",
-  if not os.path.isdir(container['remote_private_dir'])
+  if os.path.isdir(container['remote_private_dir']):
     print "\t[\033[31mFailed\033[0m]"
     print "There is already a directory at:", container['remote_private_dir']
     return False
-  if os.system("/sbin/zfs clone "+container['base_node']+" "+remote_zfs_pool):
+  if os.system("/sbin/zfs clone "+container['base_node']+" "+container['remote_zfs_pool']):
     print "\t[\033[31mFailed\033[0m]"
     print "ZFS cloning failed. Are you allowed to do this?"
     return False
@@ -141,17 +141,20 @@ def main():
   containers, options = readConfig(configFile)
   if socket.gethostname() != options['root_server']:
     print "You appear to be running on a machine other than the root server."
-    print "Are you sure you know what you are doing? [Y/n]"
-    response = raw_input()
+    response = raw_input("Are you sure you know what you are doing? [Y/n]:")
     if not response in ["y", "Y", "yes", "Yes", ""]:
       sys.exit("Try running this script again on: "+options['root_server'])
   for i in containers:
-    if all([createRoot(i, options), configNetwork(i, options), update(i,options), cfengine(i, options)]):
-      print "Successfully created:", i['name']
-    else:
+    error = False
+    for func in [createRoot, configNetwork, update, cfengine]:
+      if not(func(i, options)):
+        error = True
+        break
+    if error:
       cleanRoot(i, options)
       cleanNetwork(i, options)
       sys.exit("Failed!")
+    print "Successfully created:", i['name']
   print "Finished creating nodes successfully."  
 
 main()
