@@ -3,25 +3,52 @@
 # The parser is simple and stupid, be gentle.
 # The variables in brackets do _not_ have to be defined before
 # reference, so you may use node information in the main section.
-#i.e. privateDir = /openvz/<name> will change based on the node
+#i.e. private_dir = /openvz/<name> will change based on the node
 # using it.
 # Note, however, that if a variable is resolved locally, it will
 # not be replaced again later. If you set the name in the main,
 # it will be applied everywhere.
-rootServer = mcp-be.cs.umbc.edu
-rootPool = /pool
-# The following are only defaults, and can be replaced in 
+
+# Name of the server with the nfs mounts
+root_server = mcp-be.cs.umbc.edu
+
+# ZFS pool on the root server where node private directories are held
+root_pool = pool
+
+# The following are only defaults, and can be replaced in
 # the node definitions simply by redefining them there.
-privateDir = /openvz/<name>
-privateRemoteLocation =	//<rootServer>/pool/<name>
-mountOptions = rw
-mountType = cifs
+
+# The root directory for each node
+local_private_dir = /openvz/<name>
+
+# The location to be mounted to the private directory
+private_remote_location = //<root_server>/<root_pool>/<name>
+
+# Options for mounting the private directory
+mount_options = rw
+
+# The method to use mounting the private directory. [cifs|nfs]
+mount_type = cifs
+
+#Network settings
 broadcast = 130.85.36.127
-netmask	= 255.255.255.192
+netmask = 255.255.255.192
+gateway = 130.85.36.65
 hostname = <name>.cs.umbc.edu
-#The section name will become the hostname
+
+#The section name will become the nodename unless specified elsewhere
 name = <section>
+
+# The template that should be cloned to create the private directory
+base_node = /<root_pool>/basenode@base
+
+# The location on the root server where the private directory is stored
+# This is usually just the remote_zfs_pool, but mounted at /
+remote_private_dir = /<remote_zfs_pool>
+
+# The zfs dataset to hold the remove private dir
+remote_zfs_pool = <root_pool>/<name>
 
 #Bare minimum config
 [nagios]
-ipAddress = 130.85.36.122
+ip_address = 130.85.36.122

@@ -3,6 +3,7 @@ import re
 import os
 import sys
 import ConfigParser
+import socket
 
 # Creates a new openvz container for the new csee environment.
 # Creates:
@@ -75,8 +76,16 @@ def createRoot(container, options):
   #Clone zfs template
   #Success return true, else false
   print "Creating private dir for:", container['name'], "...",
-  print "\t[\033[31mFailed\033[0m]"
-  return False
+  if not os.path.isdir(container['remote_private_dir'])
+    print "\t[\033[31mFailed\033[0m]"
+    print "There is already a directory at:", container['remote_private_dir']
+    return False
+  if os.system("/sbin/zfs clone "+container['base_node']+" "+remote_zfs_pool):
+    print "\t[\033[31mFailed\033[0m]"
+    print "ZFS cloning failed. Are you allowed to do this?"
+    return False
+  print "\t[\033[32m  Ok  \033[0m]"
+  return True
 
 def configNetwork(container, options):
   #Configure /etc/sysconfig/ifcfg-eth0
@@ -84,6 +93,23 @@ def configNetwork(container, options):
   #Copy configs over to cfengine
   #Success return true, else false
   print "Configuring network for:", container['name'], "...",
+  with open(container['remote_private_dir']+"/etc/sysconfig/network-scripts/ifcfg-eth0", "w") as ifcfg:
+    ifcfg.write("DEVICE=eth0\n")
+    ifcfg.write("BOOTPROTO=static\n")
+    ifcfg.write("ONBOOT=yes\n")
+    ifcfg.write("IPADDR="+container['ip_address']+"\n")
+    ifcfg.write("BROADCAST="+container['broadcast']+"\n")
+    ifcfg.write("NETMASK="+container['netmask']+"\n")
+    ifcfg.write("HOSTNAME="+container['hostname']+"\n")
+    ifcfg.write("GATEWAY="+container['gateway']+"\n")
+  with open(container['remote_private_dir']+"/etc/sysconfig/network", "w") as network:
+    network.write("NETWORKING=yes\n")
+    network.write("GATEWAYDEV=venet0\n")
+    network.write("NETWORKING_IPV6=no\n")
+    network.write("IPV6_DEFAULTDEV=venet0\n")
+    network.write("NISDOMAIN=CSEEfoo\n")
+    network.write("GATEWAY="+container['gateway']+"\n")
+    network.write("HOSTNAME="+container['hostname']+"\n")
   print "\t[\033[32m  Ok  \033[0m]"
   return True
 
@@ -101,12 +127,24 @@ def cfengine(container, options):
   print "\t[\033[32m  Ok  \033[0m]"
   return True
 
+def cleanRoot(container, options):
+  return True
+
+def cleanNetwork(container, options):
+  return True
+
 def main():
   if len(sys.argv) >= 2:
     configFile = sys.argv[1]
   else:
     configFile = "./nodeconf"
   containers, options = readConfig(configFile)
+  if socket.gethostname() != options['root_server']:
+    print "You appear to be running on a machine other than the root server."
+    print "Are you sure you know what you are doing? [Y/n]"
+    response = raw_input()
+    if not response in ["y", "Y", "yes", "Yes", ""]:
+      sys.exit("Try running this script again on: "+options['root_server'])
   for i in containers:
     if all([createRoot(i, options), configNetwork(i, options), update(i,options), cfengine(i, options)]):
       print "Successfully created:", i['name']
@@ -114,8 +152,6 @@ def main():
       cleanRoot(i, options)
       cleanNetwork(i, options)
       sys.exit("Failed!")
-  print "Finished creating nodes successfully."
-    
-  
+  print "Finished creating nodes successfully."  
 
 main()
