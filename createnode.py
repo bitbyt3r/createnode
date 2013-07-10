@@ -41,9 +41,8 @@ def readConfig(configFile):
         containers[i][j[0]] = j[1]
       if not "section" in containers[i].keys():
         containers[i]["section"] = i
-  print containers, options
   if options:
-    replaceKeys(options, {})
+    options = replaceKeys(options, {})
   containers = [replaceKeys(containers[x], options) for x in containers]
   return containers, options
 
@@ -59,9 +58,11 @@ def replaceKeys(container, main):
     for j in keysWithSubs.keys():
       if not any(map(lambda x: x in keysWithSubs.keys(), keysWithSubs[j])):
         for k in keysWithSubs[j]:
-          container[j] = re.sub("<"+k+">", container[k])
-          madeProgress = True
+          if k in container.keys():
+            container[j] = re.sub("<"+k+">", container[k], container[j])
+            madeProgress = True
     keysWithSubs = remainingSubs(container)
+  return container
   
 def remainingSubs(container):
   keysWithSubs = {}
@@ -70,27 +71,35 @@ def remainingSubs(container):
       keysWithSubs[i] = re.findall(".*<(.+?)>.*", container[i])
   return keysWithSubs
 
-def createRoot(container):
+def createRoot(container, options):
   #Clone zfs template
   #Success return true, else false
-  return
+  print "Creating private dir for:", container['name'], "...",
+  print "\t[\033[31mFailed\033[0m]"
+  return False
 
-def configNetwork(container):
+def configNetwork(container, options):
   #Configure /etc/sysconfig/ifcfg-eth0
   #Configure /etc/sysconfig/network
   #Copy configs over to cfengine
   #Success return true, else false
-  return
+  print "Configuring network for:", container['name'], "...",
+  print "\t[\033[32m  Ok  \033[0m]"
+  return True
 
-def update(container):
+def update(container, options):
   #Runs updaterpm inside of the container
   #Returns True on success, else False
-  return
+  print "Running rpmupdate on:", container['name'], "...",
+  print "\t[\033[32m  Ok  \033[0m]"
+  return True
 
-def cfengine(container):
+def cfengine(container, options):
   #Runs cfengine with the proper configuration for this zone before booting
   #
-  return
+  print "Running cfengine on:", container['name'], "...",
+  print "\t[\033[32m  Ok  \033[0m]"
+  return True
 
 def main():
   if len(sys.argv) >= 2:
@@ -98,7 +107,15 @@ def main():
   else:
     configFile = "./nodeconf"
   containers, options = readConfig(configFile)
-  print containers, options
+  for i in containers:
+    if all([createRoot(i, options), configNetwork(i, options), update(i,options), cfengine(i, options)]):
+      print "Successfully created:", i['name']
+    else:
+      cleanRoot(i, options)
+      cleanNetwork(i, options)
+      sys.exit("Failed!")
+  print "Finished creating nodes successfully."
+    
   
 
 main()

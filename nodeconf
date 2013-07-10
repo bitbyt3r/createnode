@@ -5,6 +5,9 @@
 # reference, so you may use node information in the main section.
 #i.e. privateDir = /openvz/<name> will change based on the node
 # using it.
+# Note, however, that if a variable is resolved locally, it will
+# not be replaced again later. If you set the name in the main,
+# it will be applied everywhere.
 rootServer = mcp-be.cs.umbc.edu
 rootPool = /pool
 # The following are only defaults, and can be replaced in 
