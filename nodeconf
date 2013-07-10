@@ -1,0 +1,24 @@
+[main]
+# Objects in brackets are replaced by the corresponding value.
+# The parser is simple and stupid, be gentle.
+# The variables in brackets do _not_ have to be defined before
+# reference, so you may use node information in the main section.
+#i.e. privateDir = /openvz/<name> will change based on the node
+# using it.
+rootServer = mcp-be.cs.umbc.edu
+rootPool = /pool
+# The following are only defaults, and can be replaced in 
+# the node definitions simply by redefining them there.
+privateDir = /openvz/<name>
+privateRemoteLocation =	//<rootServer>/pool/<name>
+mountOptions = rw
+mountType = cifs
+broadcast = 130.85.36.127
+netmask	= 255.255.255.192
+hostname = <name>.cs.umbc.edu
+#The section name will become the hostname
+name = <section>
+
+#Bare minimum config
+[nagios]
+ipAddress = 130.85.36.122
