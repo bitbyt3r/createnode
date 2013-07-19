@@ -9,20 +9,63 @@
 # not be replaced again later. If you set the name in the main,
 # it will be applied everywhere.
 
+########
+#Server Information
+########
+
 # Name of the server with the nfs mounts
 root_server = mcp-be.cs.umbc.edu
 
 # ZFS pool on the root server where node private directories are held
 root_pool = pool
 
+# The template that should be cloned to create the private directory
+base_node = <root_pool>/base@base
+
+# The location on the root server where the private directory is stored
+# This is usually just the remote_zfs_pool, but mounted at /
+remote_private_dir = /<remote_zfs_pool>
+
+# The zfs dataset to hold the remove private dir
+remote_zfs_pool = <root_pool>/<name>
+
+########
+#Hardware Node Information
+########
+
+# The directory that holds the openvz configuration files
+vz_conf_dir = /<root_pool>/vzconf
+
+########
+#Node Defaults
+########
+
 # The following are only defaults, and can be replaced in
 # the node definitions simply by redefining them there.
 
+#The section name will become the nodename unless specified elsewhere
+name = <section>
+
+# Should nfs mounts be allowed on the node?
+allow_nfs = True
+
+# The private directory for each node
+local_private_dir = /pool/<name>
+
 # The root directory for each node
-local_private_dir = /openvz/<name>
+root_dir = /vz/root/<ctid>
+
+# The template to give to openvz
+os_template = centos-6-x86_64
+
+# I am really not sure.
+origin_sample = vswap-256m
 
 # The location to be mounted to the private directory
 private_remote_location = //<root_server>/<root_pool>/<name>
+
+# The individual configuration files for the nodes
+configuration = <vz_conf_dir>/<ctid>.conf
 
 # Options for mounting the private directory
 mount_options = rw
@@ -36,19 +79,39 @@ netmask = 255.255.255.192
 gateway = 130.85.36.65
 hostname = <name>.cs.umbc.edu
 
-#The section name will become the nodename unless specified elsewhere
-name = <section>
+# Beancounter settings
+max_memory = 0:2G
+max_swap = 0:2G
+# Max disk usage in the	form soft_limit:hard_limit
+max_disk_space = 50G:50.2G 
+max_disk_inodes	= 1000000000:1000500000
+cpu_units = 1000
+quota_time = 0
 
-# The template that should be cloned to create the private directory
-base_node = /<root_pool>/basenode@base
+# Openvz features
+features = nfs:on
 
-# The location on the root server where the private directory is stored
-# This is usually just the remote_zfs_pool, but mounted at /
-remote_private_dir = /<remote_zfs_pool>
-
-# The zfs dataset to hold the remove private dir
-remote_zfs_pool = <root_pool>/<name>
+########
+#Node Definitions
+########
 
 #Bare minimum config
 [nagios]
 ip_address = 130.85.36.122
+ctid = 2
+
+[cfengine]
+ip_address = 130.85.36.97
+ctid = 3
+
+[testingbox]
+ip_address = 130.85.36.122
+ctid = 4
+
+[logstash]
+ip_address = 130.85.36.122
+ctid = 5
+
+[mrepo]
+ip_address = 130.85.36.75
+ctid = 6

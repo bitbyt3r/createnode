@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python -u
 import re
 import os
 import sys
@@ -72,10 +72,30 @@ def remainingSubs(container):
       keysWithSubs[i] = re.findall(".*<(.+?)>.*", container[i])
   return keysWithSubs
 
+def createConf(container, options):
+  print "Creating configuration for:", container['name']+"...",
+  with open(container['configuration'], "w") as configFile:
+    configFile.write("PHYSPAGES=\""+container['max_memory']+"\"\n")
+    configFile.write("SWAPPAGES=\""+container['max_swap']+"\"\n")
+    configFile.write("DISKSPACE=\""+container['max_disk_space']+"\"\n")
+    configFile.write("DISKINODES=\""+container['max_disk_inodes']+"\"\n")
+    configFile.write("QUOTATIME=\""+container['quota_time']+"\"\n")
+    configFile.write("CPUUNITS=\""+container['cpu_units']+"\"\n")
+    configFile.write("VE_ROOT=\""+container['root_dir']+"\"\n")
+    configFile.write("VE_PRIVATE=\""+container['local_private_dir']+"\"\n")
+    configFile.write("OSTEMPLATE=\""+container['os_template']+"\"\n")
+    configFile.write("ORIGIN_SAMPLE=\""+container['origin_sample']+"\"\n")
+    configFile.write("IP_ADDRESS=\n")
+    configFile.write("NAME=\""+container['name']+"\"\n")
+    if translateBoolStr(container['allow_nfs']):
+      configFile.write("FEATURES=\"nfs:on\"\n")
+  print "\t[\033[32m  Ok  \033[0m]"
+  return True
+
 def createRoot(container, options):
   #Clone zfs template
   #Success return true, else false
-  print "Creating private dir for:", container['name'], "...",
+  print "Creating private dir for:", container['name']+"...",
   if os.path.isdir(container['remote_private_dir']):
     print "\t[\033[31mFailed\033[0m]"
     print "There is already a directory at:", container['remote_private_dir']
@@ -92,7 +112,7 @@ def configNetwork(container, options):
   #Configure /etc/sysconfig/network
   #Copy configs over to cfengine
   #Success return true, else false
-  print "Configuring network for:", container['name'], "...",
+  print "Configuring network for:", container['name']+"...",
   with open(container['remote_private_dir']+"/etc/sysconfig/network-scripts/ifcfg-eth0", "w") as ifcfg:
     ifcfg.write("DEVICE=eth0\n")
     ifcfg.write("BOOTPROTO=static\n")
@@ -113,24 +133,41 @@ def configNetwork(container, options):
   print "\t[\033[32m  Ok  \033[0m]"
   return True
 
+def networkDevices(container, options):
+  #Adds network devices to container
+  print "Adding network device to:", container['name']+"...",
+  if os.system("/usr/sbin/vzctl set "+container['ctid']+" --netif_add eth0,,veth"+container['ctid']+".0,FE:FF:FF:FF:FF:FF, --save > vzctl.log"):
+    print "\t[\033[31mFailed\033[0m]"
+    return False
+  print "\t[\033[32m  Ok  \033[0m]"
+  return True
+
 def update(container, options):
   #Runs updaterpm inside of the container
   #Returns True on success, else False
-  print "Running rpmupdate on:", container['name'], "...",
+  print "Running rpmupdate on:", container['name']+"...",
+  actualRoot = os.open("/", os.O_RDONLY)
+  os.chroot(container['remote_private_dir'])
+  if os.system("/usr/csee/sbin/updaterpm > update.log 2>&1"):
+    print "\t[\033[31mFailed\033[0m]"
+    return False
+  os.fchdir(actualRoot)
+  os.chroot(".")
   print "\t[\033[32m  Ok  \033[0m]"
   return True
 
 def cfengine(container, options):
   #Runs cfengine with the proper configuration for this zone before booting
   #
-  print "Running cfengine on:", container['name'], "...",
+  print "Running cfengine on:", container['name']+"...",
+  actualRoot = os.open("/", os.O_RDONLY)
+  os.chroot(container['remote_private_dir'])
+  if os.system("/var/cfengine/bin/cf-agent -Kv"):
+    print "\t[\033[31mFailed\033[0m]"
+    return False
+  os.fchdir(actualRoot)
+  os.chroot(".")
   print "\t[\033[32m  Ok  \033[0m]"
-  return True
-
-def cleanRoot(container, options):
-  return True
-
-def cleanNetwork(container, options):
   return True
 
 def main():
@@ -145,14 +182,15 @@ def main():
     if not response in ["y", "Y", "yes", "Yes", ""]:
       sys.exit("Try running this script again on: "+options['root_server'])
   for i in containers:
+    if os.path.exists(i['configuration']):
+      print "Already configured, skipping:", i['name']
+      continue
     error = False
-    for func in [createRoot, configNetwork, update, cfengine]:
+    for func in [createConf, createRoot, configNetwork, networkDevices]:
       if not(func(i, options)):
         error = True
         break
     if error:
-      cleanRoot(i, options)
-      cleanNetwork(i, options)
       sys.exit("Failed!")
     print "Successfully created:", i['name']
   print "Finished creating nodes successfully."  
