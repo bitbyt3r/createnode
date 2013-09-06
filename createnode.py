@@ -72,6 +72,9 @@ def remainingSubs(container):
       keysWithSubs[i] = re.findall(".*<(.+?)>.*", container[i])
   return keysWithSubs
 
+def translateBoolStr(str):
+  return str.lower() in ["yes", "true", "on"]
+
 def createConf(container, options):
   print "Creating configuration for:", container['name']+"...",
   with open(container['configuration'], "w") as configFile:

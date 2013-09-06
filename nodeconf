@@ -115,3 +115,15 @@ ctid = 5
 [mrepo]
 ip_address = 130.85.36.75
 ctid = 6
+
+[malcolm]
+ip_address = 130.85.36.126
+ctid = 7
+
+[testingbox-ciaran]
+ip_address = 130.85.36.122
+ctid = 8
+
+[david]
+ip_address = 130.85.36.110
+ctid = 9
